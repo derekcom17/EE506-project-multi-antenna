@@ -16,8 +16,7 @@ function [x_data] = bf_equalizer(y_rs, y_data, x_rs)
     %% Apply weights
     x_data = w*y_data; % Weights "undo" the channel H with minimal error
 
-    %fprintf('H = %s\n', num2str(H));
-    %fprintf('n = %s\n', num2str(n_est));
-    H
-    n_pwr
+     % abs(H)
+     % real(H)
+     % n_pwr
 end

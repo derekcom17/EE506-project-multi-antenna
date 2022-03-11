@@ -1,11 +1,47 @@
 
+% [err_est, err_mea] = calc_error_rate("BPSK", 10^( 0.0 /10), 3);
+% fprintf('orig err est = %d\n', err_est);
+% fprintf('measured error = %d\n', err_mea);
 
-[err_est, err_mea] = calc_error_rate("BPSK", 10^( 0.0 /10), 4);
-fprintf('orig err est = %d\n', err_est);
-fprintf('measured error = %d\n', err_mea);
+snrs = -5:0.1:3;
+numrxs = [1, 2, 3, 4];
+colors = ["b", "r", "g", "m"];
 
+%% Plot error rate vs SNR for different number of RX antennas
+err_est = zeros(size(snrs));
+err_mea = zeros(size(snrs));
+old_err_meas = zeros(size(snrs));
+plotnames = {};
+figure;
+for r=numrxs
+    for ii=1:numel(snrs)
+        [err_est(ii), err_mea(ii), old_err_meas(ii)] = calc_error_rate("BPSK", 10^(snrs(ii)/10), r);
+    end
+    plotnames{end+1} = "";
+    plotnames{end+1} = sprintf("%d RX antennas with equalization", r);    
+    semilogy(snrs, err_est, colors(find(numrxs==r)), ...
+             snrs, err_mea, colors(find(numrxs==r))+'x');
+    hold on;
+end
+xlabel('E_0/N_0')
+ylabel('Error Rate')
+title('BPSK Symbol-Error-Rate vs. SNR')
+grid on;
+legend(plotnames, 'location', 'southwest');
 
-function [estim, meas] = calc_error_rate(ctype, e0pern0, numrx)
+%% Plot last set with and without equalization
+figure;
+semilogy(snrs, err_mea, 'x',...
+         snrs, old_err_meas, 'o');
+xlabel('E_0/N_0')
+ylabel('Error Rate')
+title('BPSK Symbol-Error-Rate vs. SNR')
+grid on;
+legend(sprintf("%d RX antennas with equalization", r), ...
+       sprintf("%d RX antennas without equalization", r), ...
+       'location', 'southwest');
+
+function [estim, meas, orig_meas] = calc_error_rate(ctype, e0pern0, numrx)
     if ctype=="BPSK"
         const = [-1, 1];        
     elseif ctype=="BFSK"
@@ -32,14 +68,16 @@ function [estim, meas] = calc_error_rate(ctype, e0pern0, numrx)
     % Generate channel (phase shift per rx ant + noise + scaling)
     phase_shifts = exp(1i*(rand(numrx, 1)-0.5)*pi);
     rs_y   = repmat(  rs, numrx, 1) .* phase_shifts;
-    data_y = repmat(data, numrx, 1) .* phase_shifts;
+    data_y = repmat(data, numrx, 1) .* phase_shifts;    
+    % Per channel scaling
+    chan_scale = (rand(numrx, 1)*1.5 + 0.5);
+    chan_scale = chan_scale/sqrt(mean(chan_scale.^2)); % Normalize
+    %chan_scale = 0.5;
+    rs_y   =   rs_y .* chan_scale;
+    data_y = data_y .* chan_scale;
     n0 = 1/e0pern0;
     rs_y   =   rs_y + (sqrt(n0/2) * (randn(numrx,N_RS) + 1i*randn(numrx,N_RS)));
     data_y = data_y + (sqrt(n0/2) * (randn(numrx,N)    + 1i*randn(numrx,N)));
-    % Per channel scaling
-    chan_scale = (rand(numrx, 1)*1.5 + 0.5);
-    rs_y   =   rs_y .* chan_scale;
-    data_y = data_y .* chan_scale;
     % TODO add per channel noise power?
 
     % Receiver processing
@@ -56,8 +94,28 @@ function [estim, meas] = calc_error_rate(ctype, e0pern0, numrx)
     end
     errs = numel(err_idx);    
     meas = errs/N;
+
+    % Calculate errors without equalization
+    if numrx >1
+        x_mean = mean(data_y); % Average 'numrx' data points
+    else
+        x_mean = data_y;
+    end
     
-    const_plot(data_y, x_eq, err_idx);
+    if ctype=="BPSK"
+        err_idx = find( sign(real(x_mean)) ~= sign(real(data)) );
+    elseif ctype=="BFSK"
+        err_idx = find( sign(real(x_x_meaneq)-imag(x_mean)) ~= sign(real(data)-imag(data)) );
+    elseif ctype=="OOK"
+        err_idx = find( sign(real(x_mean)-sqrt(2)/2) ~= sign(real(data-sqrt(2)/2)) );
+    else
+        error("Const not supported");
+    end
+    errs = numel(err_idx);    
+    orig_meas = errs/N;
+
+    
+    % const_plot(data_y, x_eq, err_idx);
 end
 
 %% Plot constilation with noise
