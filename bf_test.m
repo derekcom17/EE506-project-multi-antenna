@@ -1,5 +1,5 @@
 
-% [err_est, err_mea] = calc_error_rate("BPSK", 10^( 0.0 /10), 3);
+[err_est, err_mea, old_err_meas] = calc_error_rate("BPSK", 10^( 3.0 /10), 4);
 % fprintf('orig err est = %d\n', err_est);
 % fprintf('measured error = %d\n', err_mea);
 
@@ -95,6 +95,8 @@ function [estim, meas, orig_meas] = calc_error_rate(ctype, e0pern0, numrx)
     errs = numel(err_idx);    
     meas = errs/N;
 
+    % const_plot(data_y, x_eq, err_idx);
+
     % Calculate errors without equalization
     if numrx >1
         x_mean = mean(data_y); % Average 'numrx' data points
@@ -113,9 +115,6 @@ function [estim, meas, orig_meas] = calc_error_rate(ctype, e0pern0, numrx)
     end
     errs = numel(err_idx);    
     orig_meas = errs/N;
-
-    
-    % const_plot(data_y, x_eq, err_idx);
 end
 
 %% Plot constilation with noise
