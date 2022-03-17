@@ -1,11 +1,13 @@
+%% SIMO Beamforming Performance Test
 
-[err_est, err_mea, old_err_meas] = calc_error_rate("BPSK", 10^( 3.0 /10), 4);
-% fprintf('orig err est = %d\n', err_est);
-% fprintf('measured error = %d\n', err_mea);
+rng(0); % Random, but repeatable!
 
-snrs = -5:0.1:3;
-numrxs = [1, 2, 3, 4];
-colors = ["b", "r", "g", "m"];
+% Generate detailed plots for this single simulation
+[err_est, err_mea, old_err_meas] = calc_error_rate("BPSK", 10^( 2.0 /10), 4, true);
+
+snrs = -5:0.1:3; % SNRs to simulate
+numrxs = [1, 2, 3, 4]; % RX antenna numbers to simulate
+colors = ["b", "r", "g", "m"]; % a list of colors for plots
 
 %% Plot error rate vs SNR for different number of RX antennas
 err_est = zeros(size(snrs));
@@ -15,10 +17,10 @@ plotnames = {};
 figure;
 for r=numrxs
     for ii=1:numel(snrs)
-        [err_est(ii), err_mea(ii), old_err_meas(ii)] = calc_error_rate("BPSK", 10^(snrs(ii)/10), r);
+        [err_est(ii), err_mea(ii), old_err_meas(ii)] = calc_error_rate("BPSK", 10^(snrs(ii)/10), r, false);
     end
-    plotnames{end+1} = "";
-    plotnames{end+1} = sprintf("%d RX antennas with equalization", r);    
+    plotnames{end+1} = sprintf("%d RX antennas with equalization (estimated)", r);
+    plotnames{end+1} = sprintf("%d RX antennas with equalization", r);
     semilogy(snrs, err_est, colors(find(numrxs==r)), ...
              snrs, err_mea, colors(find(numrxs==r))+'x');
     hold on;
@@ -31,17 +33,19 @@ legend(plotnames, 'location', 'southwest');
 
 %% Plot last set with and without equalization
 figure;
-semilogy(snrs, err_mea, 'x',...
-         snrs, old_err_meas, 'o');
+semilogy(snrs, err_est, 'm', ...
+         snrs, err_mea, 'mx',...
+         snrs, old_err_meas, 'ro');
 xlabel('E_0/N_0')
 ylabel('Error Rate')
 title('BPSK Symbol-Error-Rate vs. SNR')
 grid on;
-legend(sprintf("%d RX antennas with equalization", r), ...
+legend(sprintf("%d RX antennas with equalization (estimated)", r), ...
+       sprintf("%d RX antennas with equalization", r), ...
        sprintf("%d RX antennas without equalization", r), ...
        'location', 'southwest');
 
-function [estim, meas, orig_meas] = calc_error_rate(ctype, e0pern0, numrx)
+function [estim, meas, orig_meas] = calc_error_rate(ctype, e0pern0, numrx, genPlot)
     if ctype=="BPSK"
         const = [-1, 1];        
     elseif ctype=="BFSK"
@@ -61,7 +65,7 @@ function [estim, meas, orig_meas] = calc_error_rate(ctype, e0pern0, numrx)
     data = const(data_bits);
 
     % Generate Reference Signal
-    N_RS = 400; % TODO try different nums
+    N_RS = 400;
     rs_bits = repmat([1,2], 1, N_RS/2);
     rs = const(rs_bits);
 
@@ -77,8 +81,7 @@ function [estim, meas, orig_meas] = calc_error_rate(ctype, e0pern0, numrx)
     data_y = data_y .* chan_scale;
     n0 = 1/e0pern0;
     rs_y   =   rs_y + (sqrt(n0/2) * (randn(numrx,N_RS) + 1i*randn(numrx,N_RS)));
-    data_y = data_y + (sqrt(n0/2) * (randn(numrx,N)    + 1i*randn(numrx,N)));
-    % TODO add per channel noise power?
+    data_y = data_y + (sqrt(n0/2) * (randn(numrx,N)    + 1i*randn(numrx,N)));    
 
     % Receiver processing
     x_eq = bf_equalizer(rs_y, data_y, rs);
@@ -94,8 +97,10 @@ function [estim, meas, orig_meas] = calc_error_rate(ctype, e0pern0, numrx)
     end
     errs = numel(err_idx);    
     meas = errs/N;
-
-    % const_plot(data_y, x_eq, err_idx);
+    
+    if genPlot
+        const_plot(data_y, x_eq, err_idx);
+    end
 
     % Calculate errors without equalization
     if numrx >1

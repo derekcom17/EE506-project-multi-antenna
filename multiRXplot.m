@@ -1,4 +1,4 @@
-%close all;
+%% Multiple Receive Antenna Performance Test
 
 %% Run simulations for the 3 constilations at different SNRs
 snrs = -5:0.1:3;
@@ -9,13 +9,12 @@ err_est = zeros(size(snrs));
 err_mea = zeros(size(snrs));
 plotnames = {};
 figure;
-% hold on;
 for r=numrxs
     for ii=1:numel(snrs)
         [err_est(ii), err_mea(ii)] = calc_error_rate("BPSK", 10^(snrs(ii)/10), r);
     end
-    plotnames{end+1} = "";
-    plotnames{end+1} = sprintf("%d RX antennas", r);    
+    plotnames{end+1} = sprintf("%d RX antennas (estimated)", r);
+    plotnames{end+1} = sprintf("%d RX antennas", r);
     semilogy(snrs, err_est, colors(find(numrxs==r)), ...
              snrs, err_mea, colors(find(numrxs==r))+'x');
     hold on;
